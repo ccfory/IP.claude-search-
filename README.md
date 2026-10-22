@@ -1,10 +1,47 @@
-# IP.claude-search-
-扮演 Claude，通过虚构档案、时间与凭证判断访客当前所在地的网页小游戏。
+# IP CHECK · 雨夜档案
 
-包含 18 份档案、三班流程、原创合成音效与背景音乐，支持手机与桌面浏览器。全部角色和凭证均为虚构，无真实 IP 检测，与 Anthropic 无关。
+扮演 Claude 夜班审查员，在三个雨夜中重审历史档案，追查 ECHO 覆盖原始记录的秘密。
 
-## 发布
-在 Settings → Pages 中，Source 选择 Deploy from a branch，分支选择 main，目录选择 / (root)，保存。
+## 最终版内容
 
-## 运行
-直接打开 index.html，或用任意静态网站服务器提供本目录。没有外部依赖；音效需要首次点击后启用。
+- DAY 1–3、每日开班简报、日终报告和分支剧情。
+- 48 份虚构档案，每局抽取 18 份；每天 6 位访客，其中 2 份账号审查。
+- 中英文界面、手册、证据、对话与结算，可切换语言并保留进度。
+- 像素风访客、Claude 立绘、复古纸张与机械审核按钮。
+- 分层雨幕、玻璃水痕、湿路反光与立体声雨声；完整循环背景音乐《旧屏余响》。
+- 从容与限时模式；限时按天为 90 / 80 / 70 秒；自动存档和剧情札记。
+
+## 游玩与运行
+
+[线上游戏](https://ip-checkpoint-cui.fitclock13.chatgpt.site)
+
+本仓库根目录就是静态网站。无需安装依赖，可直接打开 `index.html`，或在本目录运行：
+
+```sh
+python -m http.server 8765
+```
+
+浏览器打开 `http://127.0.0.1:8765/`。声音在首次交互后启用，可分别调整环境声、音效与背景音乐。
+
+GitHub Pages 可使用 `main` 分支的 `/ (root)` 目录发布；保留 `.nojekyll`。
+
+## 操作
+
+- `1 / 2 / 3`：问询情况、查接入、核验凭证。
+- 选择 1–2 项材料后，`A / D / S`：继续服务、限制访问、人工复核。
+- 空格：显示完整对话；Esc：暂停。
+- 每项调查扣 5 分；正确 +80，有据 +20，连对额外奖励；四次失误结束。
+
+## 审核规则与来源
+
+独立同人推理游戏，与 Anthropic 无关。全部人物、凭证、账号记录和审核流程均为虚构简化，不检测真实 IP，也不声称模拟未公开的封号算法。
+
+地区资格、账号共享转售、未经许可的个人服务自动化、反复违规及申诉需要结合有效材料判断；正式 API 另有适用条款。中文、国籍、时区、单次换 IP、VPN 标签、高用量或一次模型拒答均不能单独定案。游戏中的“限制访问”不等于永久封号。
+
+参考日期：2026-10-22。未使用 2026-11-12 才生效的政策更新。
+
+- [Safeguards, warnings and appeals](https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals)
+- [Consumer Terms](https://www.anthropic.com/legal/consumer-terms)
+- [Where can I access Claude?](https://support.claude.com/en/articles/8461763-where-can-i-access-claude)
+
+Claude 立绘与《旧屏余响》使用项目提供的本地素材。

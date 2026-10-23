@@ -1,0 +1,95 @@
+// State and interaction regression tests with inert DOM stubs (not a layout test).
+const vm = require('node:vm');
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+function boot({blockedStorage = false, seen = true, saved = null} = {}) {
+  let now = 0, sequence = 0;
+  const nodes = new Map(), storage = new Map(), timers = new Map(), listeners = new Map(), pending = new Map();
+  if (seen) { storage.set('ipcheck-tutorial-v1','done'); storage.set('ipcheck-hunt-guide-v1','done'); }
+  if (saved) storage.set('ipcheck-hunt-v1',JSON.stringify(saved));
+  storage.set('ipcheck-nightshift-v2-best-relaxed','123');
+  function node(key) {
+    if (!nodes.has(key)) nodes.set(key, {
+      id: key, innerHTML: '', textContent: '', style: {}, dataset: {}, open: false,
+      isConnected: true, disabled: false, scrollHeight: 500,
+      classList: {add() {}, remove() {}, toggle() {}},
+      setAttribute() {}, focus() {}, scrollIntoView() {},
+      showModal() {this.open = true;}, close() {this.open = false;},
+      querySelector() {return node('focus');},
+      querySelectorAll(selector) {
+        if(selector==='[data-hunt]') return [...this.innerHTML.matchAll(/data-hunt="([^"]+)"(?: data-value="([^"]+)")?/g)].map(m=>{const b=node('action-'+m[1]+(m[2]||''));b.dataset={hunt:m[1],value:m[2]};return b;});
+        return selector === '[data-tutorial-verdict]' ? ['out','cn','hold'].map(v => {
+          const b = node('verdict-' + v); b.dataset.tutorialVerdict = v; return b;
+        }) : [];
+      },
+      addEventListener(type, fn) {listeners.set(key + ':' + type, fn);}
+    });
+    return nodes.get(key);
+  }
+  const document = {hidden: false, documentElement: {}, body: node('body'), getElementById: node, querySelector: node,
+    querySelectorAll: () => [], addEventListener(type, fn) {listeners.set(type, fn);}};
+  const context = vm.createContext({document,
+    window: {innerWidth: 390, matchMedia: () => ({matches: true}), addEventListener() {}},
+    performance: {now: () => now},
+    localStorage: {
+      getItem(k) {if (blockedStorage) throw Error('denied'); return storage.get(k) || null;},
+      setItem(k,v) {if (blockedStorage) throw Error('denied'); storage.set(k,v);}
+    },
+    Sound: {prefs: {enabled: false}, unlock() {}, scene() {}, arriving() {}, play() {}, set() {}},
+    portrait: () => '', cityScene: () => '',
+    setInterval(fn) {timers.set(++sequence,fn); return sequence;},
+    clearInterval(id) {timers.delete(id);}, setTimeout(fn) {pending.set(++sequence,fn);return sequence;}, clearTimeout(id) {pending.delete(id);}
+  });
+  for (const file of ['i18n.js','cases.js','policy.js','cases-en.js','roster.js','tutorial.js','story.js','experience.js','hunt-cases.js','hunt.js','game.js']) {
+    vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),context,{filename:file});
+  }
+  return {flush() {const jobs=[...pending.values()];pending.clear();jobs.forEach(fn=>fn());},run: code => vm.runInContext(code,context), node, storage, listeners,
+    tick(ms) {for(let elapsed=0;elapsed<ms;elapsed+=200){now+=200;for(const fn of timers.values())fn();}}};
+}
+
+const a=boot();
+const all=JSON.parse(a.run('JSON.stringify(HUNT_CASES)'));
+assert.equal(all.length,12);assert.equal(new Set(all.map(c=>c.id)).size,12);
+for(const c of all){assert.equal(c.answers.length,4);assert.equal(c.pair.length,2);assert.ok(c.pair.every(q=>q>=0&&q<4));for(const pair of [...c.answers,c.claim,c.style,c.opening,c.defense,c.reveal,c.banLine,c.allowLine])assert.ok(pair.every(x=>typeof x==='string'&&x.length>0));}
+for(let n=0;n<150;n++){
+ const queue=JSON.parse(a.run('JSON.stringify(HuntRules.roster())'));
+ assert.equal(queue.length,9);assert.equal(new Set(queue).size,9);
+ for(let tier=1;tier<=3;tier++){const batch=queue.slice((tier-1)*3,tier*3).map(id=>all.find(c=>c.id===id));assert.ok(batch.every(c=>c.tier===tier));assert.ok(batch.some(c=>c.cn)&&batch.some(c=>!c.cn));}
+}
+a.run("window.Hunt.start('relaxed')");
+for(let i=0;i<9;i++){
+ const snap=a.run('window.Hunt.snapshot'), c=all.find(c=>c.id===snap.queue[snap.index]);
+ for(const q of c.pair){a.run(`window.Hunt.ask(${q})`);a.flush();a.run(`window.Hunt.select(${q})`);}
+ a.run('window.Hunt.challenge()');
+ let before=a.run('window.Hunt.snapshot.score');a.run(`window.Hunt.decide('${c.cn?'ban':'allow'}')`);a.flush();
+ let after=a.run('window.Hunt.snapshot');assert.equal(after.history.length,i+1);assert.equal(after.history[i].correct,true);assert.equal(after.score-before,120+Math.min(30,i*10));
+ a.run("window.Hunt.decide('ban')");assert.equal(a.run('window.Hunt.snapshot.history.length'),i+1,'no duplicate judgment');
+ assert.equal(a.run('HuntRules.valid(window.Hunt.snapshot)'),true);
+ a.run('window.Hunt.next()');
+}
+assert.equal(a.run('window.Hunt.snapshot.phase'),'finished');assert.equal(a.run('window.Hunt.snapshot.lives'),3);
+assert.equal(a.storage.get('ipcheck-nightshift-v2-best-relaxed'),'123','archive best score retained');
+function fixture(id){const queue=[id,...all.filter(c=>c.id!==id).slice(0,8).map(c=>c.id)];return {v:1,mode:'relaxed',queue,index:0,phase:'playing',score:0,lives:3,streak:0,asked:[],selected:[],challenge:null,remaining:60,history:[]};}
+for(const c of all){
+ const b=boot({saved:fixture(c.id)});b.run('window.Hunt.resume()');
+ for(const q of c.pair){b.run(`window.Hunt.ask(${q})`);b.flush();b.run(`window.Hunt.select(${q})`);}
+ b.run('window.Hunt.challenge()');assert.ok(b.node('hunt-root').innerHTML.includes(c.defense[0]));
+ b.run(`window.Hunt.decide('${c.cn?'ban':'allow'}')`);b.flush();assert.equal(b.run('window.Hunt.snapshot.score'),110);
+ assert.ok(b.node('modal-content').innerHTML.includes(c.reveal[0]));
+}
+const b=boot({saved:fixture('oliver')});b.run('window.Hunt.resume();window.Hunt.ask(0)');b.flush();
+b.run("window.Hunt.decide('ban')");b.flush();assert.equal(b.run('window.Hunt.snapshot.score'),-85);assert.equal(b.run('window.Hunt.snapshot.lives'),2);assert.match(b.node('modal-content').innerHTML,/误封警报/);
+const c=boot();c.run("window.Hunt.start('timed')");const time=c.run('window.Hunt.snapshot.remaining');
+c.run('window.Hunt.pause()');c.tick(2000);assert.equal(c.run('window.Hunt.snapshot.remaining'),time);c.run('window.Hunt.resume()');c.tick(1000);assert.ok(c.run('window.Hunt.snapshot.remaining')<time);
+c.tick(60000);c.flush();assert.equal(c.run('window.Hunt.snapshot.history[0].choice'),'timeout');
+const d=boot();d.run("window.Hunt.start('relaxed')");const saved=d.storage.get('ipcheck-hunt-v1');const prior=d.run('JSON.stringify(window.Hunt.snapshot)');
+d.run('window.Hunt.guide()');d.node('action-practice').onclick();d.run('window.Hunt.ask(0)');d.flush();d.run("window.Hunt.decide('ban')");d.flush();d.run('window.Hunt.next()');
+assert.equal(d.run('JSON.stringify(window.Hunt.snapshot)'),prior);assert.equal(d.storage.get('ipcheck-hunt-v1'),saved,'practice leaves official save byte-for-byte unchanged');
+d.run('window.Hunt.ask(0)');d.flush();d.run('window.Hunt.ask(1)');d.flush();d.run('window.Hunt.ask(2)');d.flush();d.run('window.Hunt.ask(3)');d.flush();assert.equal(d.run('window.Hunt.snapshot.asked.length'),3);
+const beforeLang=d.run('JSON.stringify(window.Hunt.snapshot)');d.run('changeLanguage()');assert.equal(d.run('JSON.stringify(window.Hunt.snapshot)'),beforeLang);assert.match(d.node('hunt-root').innerHTML,/The night chase/);
+const snapshot=d.run('window.Hunt.snapshot');assert.equal(d.run('HuntRules.valid({...window.Hunt.snapshot,selected:[3]})'),false);
+const restored=boot({saved:snapshot});restored.run('window.Hunt.resume()');assert.equal(restored.run('JSON.stringify(window.Hunt.snapshot)'),JSON.stringify(snapshot));
+const unavailable=boot({blockedStorage:true});unavailable.run("window.Hunt.start('relaxed');window.Hunt.ask(0)");unavailable.flush();assert.equal(unavailable.run('window.Hunt.snapshot.asked.length'),1);
+console.log('Hunt: 12 bilingual characters; 150 balanced rosters; nine-round perfect run; every character solved; score, false-ban and timeout penalties; input guards; paused clock; save/resume; practice isolation; three-probe limit; language switch; unavailable storage passed.');

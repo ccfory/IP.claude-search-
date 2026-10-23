@@ -1,0 +1,25 @@
+/* Small, transform-based gestures shared by both game modes. */
+.archive-entry{display:flex;width:100%;align-items:center;gap:14px;text-align:left;padding:16px;margin-top:20px;border:1px solid #a79778;background:#eae2d2;color:#594d39;border-radius:4px;transition:background .2s,transform .2s}
+.archive-entry>span{font-size:27px;color:#786945}.archive-entry div{flex:1}.archive-entry b{display:block;font-size:14px}.archive-entry small{display:block;font-size:10px;line-height:1.7;margin-top:5px;color:#827457}.archive-entry em{font-style:normal;font-size:22px}
+.archive-entry:hover{background:#e0d6bf;transform:translateY(-2px)}
+.city .hero-art{animation:ambient-drift 18s ease-in-out infinite alternate;transform-origin:70% 50%}
+.hunt-portrait{position:relative;overflow:hidden}
+.hunt-portrait:after{content:'';position:absolute;inset:-35% 0 auto;height:25%;background:linear-gradient(transparent,#e6eecd13,transparent);pointer-events:none;animation:camera-sweep 8s linear infinite}
+.hunt-portrait svg,.booth .portrait svg{animation:visitor-breath 5s ease-in-out infinite;transform-origin:50% 100%}
+.hunt-live{animation:live-light 3s ease-in-out infinite}
+.hunt-probes button,.hunt-pin,.hunt-challenge,.questions button,.evidence-card{transition:transform .18s,background-color .18s,border-color .18s,box-shadow .18s}
+.hunt-probes button:not(:disabled):active,.hunt-pin:not(:disabled):active,.questions button:not(:disabled):active,.evidence-card:not(:disabled):active{transform:translateY(2px)}
+.hunt-pin.selected,.evidence-card.selected{box-shadow:inset 3px 0 #a78c50}
+.hunt-reveal-card.win{animation:reveal-settle .45s ease-out}
+.hunt-last-message,.hunt-reveal-reason{animation:message-arrive .38s ease-out}
+dialog[open] .modal-body{animation:message-arrive .28s ease-out}
+@keyframes ambient-drift{to{transform:scale(1.035) translate(-.5%,.4%)}}
+@keyframes camera-sweep{0%,20%{transform:translateY(0);opacity:0}25%{opacity:1}80%,100%{transform:translateY(650%);opacity:0}}
+@keyframes visitor-breath{50%{transform:translateY(-2px)}}
+@keyframes live-light{50%{opacity:.55}}
+@keyframes message-arrive{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+@keyframes reveal-settle{from{opacity:.4;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+html.motion-paused *,html.motion-paused *:before,html.motion-paused *:after{animation-play-state:paused!important}
+html.motion-off *,html.motion-off *:before,html.motion-off *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(max-width:600px){.archive-entry{gap:10px;padding:14px}.archive-entry b{font-size:13px}.archive-entry small{font-size:9px}}

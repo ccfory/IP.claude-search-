@@ -125,3 +125,20 @@ funny.run('window.Hunt.send("你会记住我吗？")');funny.flush();assert.matc
 const plain=boot({saved:fixture('oliver')});plain.run('window.Hunt.resume();window.Hunt.send("你会说中文吗？")');plain.flush();assert.match(plain.run('window.Hunt.snapshot.dialogue[0].response[0]'),/入职第一天/);
 assert.equal(new Set(all.map(c=>c.banter.ban[0])).size,12);
 console.log('NPC voices: twelve distinct ban jokes, repeated-question escalation, code/memory/language callbacks, unchanged scores, and valid saves passed.');
+
+// The archive bridge must call the original menu, not the nested Hunt intro.
+const modes=boot({saved:{...fixture('kevin'),dialogue:[]}});
+modes.run('window.Hunt.resume()');
+const huntSave=modes.storage.get('ipcheck-hunt-v1');
+const archiveState=modes.run('JSON.stringify(state)');
+modes.run('window.Hunt.archive()');
+assert.equal(modes.run('window.Hunt.active'),false);
+assert.equal(modes.run('window.Hunt.archiveMode'),true);
+assert.match(modes.node('modal-content').innerHTML,/零点回声/);
+assert.equal(modes.run('JSON.stringify(state)'),archiveState);
+assert.equal(modes.storage.get('ipcheck-hunt-v1'),huntSave);
+modes.run('window.Hunt.intro(true);window.Hunt.resume()');
+assert.equal(modes.run('window.Hunt.active'),true);
+assert.equal(modes.run('JSON.stringify(state)'),archiveState);
+assert.equal(modes.storage.get('ipcheck-hunt-v1'),huntSave);
+console.log('Modes: original archive menu opens, both mode states and independent saves survive the round trip.');

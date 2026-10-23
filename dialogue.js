@@ -4,10 +4,10 @@ const HuntDialogue = (() => {
   const topics = [['晚饭与饮食','dinner and food'],['工作与学习','work and study'],['游戏与网络','games and online life'],['地点与本人资料','location and personal records']];
   const questions = [['晚饭吃了什么？','What was for dinner?'],['最近忙什么？','What are you working on?'],['游戏和网络生活呢？','Games and online life?'],['核对一下地点与本人资料？','Check location and personal records?']];
   const keywords = [
-    /晚饭|早饭|午饭|早餐|午餐|晚餐|吃|菜|食堂|外卖|饮食|咖啡|香菜|折耳根|\bdinner\b|\blunch\b|\bbreakfast\b|\bfood\b|\beat\b|\bmeal\b|\bcoffee\b/gi,
+    /晚饭|早饭|午饭|早餐|午餐|晚餐|吃|喝|饮料|菜|食堂|外卖|饮食|咖啡|香菜|折耳根|\bdinner\b|\blunch\b|\bbreakfast\b|\bfood\b|\beat\b|\bmeal\b|\bcoffee\b|\bdrink\b|\btea\b/gi,
     /工作|上班|做什么|忙什么|职业|实习|老师|学校|学习|读书|大学|四级|六级|考试|作业|\bwork\b|\bjob\b|\bstudy\b|\bschool\b|\bstudent\b|\bcollege\b|\bteach\b|\bintern\b/gi,
     /游戏|玩什么|原神|队友|国服|国际服|网络生活|直播|群聊|steam|genshin|\bgam(?:e|es|ing)\b|\binternet\b|\bonline\b|\bserver\b|\bstream\b/gi,
-    /哪里|哪儿|在哪|住哪|地点|地址|所在地|纽约|伦敦|深圳|重庆|巴黎|北京|苏格兰|国籍|护照|公民|证件|资料|回执|签证|实名|持有人|本人|时区|\bwhere\b|\blive\b|\blocation\b|\baddress\b|\bcountry\b|\bnationality\b|\bpassport\b|\bcitizen\b|\brecords?\b|\breceipt\b|\bidentity\b|\bvisa\b|\btimezone\b|new york|london/gi
+    /哪里|哪儿|在哪|住哪|地点|地址|所在地|纽约|伦敦|深圳|重庆|巴黎|北京|苏格兰|国籍|护照|公民|证件|资料|回执|签证|实名|持有人|本人|时区|\bwhere\b|\blive\b|\blocation\b|\baddress\b|\bcountry\b|\bnationality\b|\bpassport\b|\bcitizen\b|\brecords?\b|\breceipt\b|\bidentity\b|\bvisa\b|\btimezone\b|\bip\b|new york|london/gi
   ];
   const voices = {
     kevin:['别急，我正在组织英文。','Wait. I am assembling my English.'],
@@ -25,6 +25,7 @@ const HuntDialogue = (() => {
   };
   const topicNames = (q, lang) => topics[q][lang];
   function pair(zh,en){return [zh,en];}
+  function voiceFor(c,i){return voices[c.id]?.[i]||['等一下。','Wait a moment.'][i];}
   function quote(str,max=92){return str.length>max?str.slice(0,max)+'…':str;}
   function lastTopic(ctx){return ctx.asked.length?ctx.asked[ctx.asked.length-1]:null;}
   function probe(c,q,ctx) {
@@ -45,17 +46,18 @@ const HuntDialogue = (() => {
     }
     const q=topic!==null && ctx.asked.includes(topic)?topic:lastTopic(ctx);
     if(intent==='pressure') return {kind:'follow',topic:q,intent,response:pair(
-      `${voice[0]}你怀疑的是「${quote(c.answers[q][0],78)}」对吧？我可以解释这句话，但不会拿语气来代替资料。你还可以核对别的话题。`,
-      `${voice[1]} You are questioning “${quote(c.answers[q][1],100)}”, right? I can explain that statement, but tone is not a record. You can cross-check another topic.`)};
+      `${c.voice?.pressure?.[0]||voice[0]}你怀疑的是「${quote(c.answers[q][0],52)}」这句，对吧？那就盯着这句问，别光盯着我的反应。`,
+      `${c.voice?.pressure?.[1]||voice[1]} You mean “${quote(c.answers[q][1],75)}”, right? Question that statement, not just my reaction.`)};
     if(intent==='owner') return {kind:'follow',topic:q,intent,response:pair(
-      `${voice[0]}目前你只问到了${topicNames(q,0)}。先前原话是「${quote(c.answers[q][0])}」。要确认是否属于我，需要把本人资料与另一条记录对上。`,
-      `${voice[1]} So far you asked about ${topicNames(q,1)}. My words were “${quote(c.answers[q][1],110)}”. To establish ownership, match my personal records to another record.`)};
+      `${voice[0]}你指的是哪一份？刚才我说「${quote(c.answers[q][0],70)}」。名字不同的那份可别也算我头上，我没法替文件夹里每个人回答。`,
+      `${voice[1]} Which record? I said “${quote(c.answers[q][1],90)}”. Don’t assign every other name in the folder to me; I can’t answer for them all.`)};
     if(intent==='contradiction') return {kind:'follow',topic:q,intent,response:pair(
-      `${voice[0]}你在拿我的开场说法「${c.claim[0]}」和刚才的${topicNames(q,0)}对照。我说过「${quote(c.answers[q][0])}」。你想指出地点冲突，还是想确认资料属于谁？`,
-      `${voice[1]} You are comparing my opening claim “${c.claim[1]}” with ${topicNames(q,1)}. I said “${quote(c.answers[q][1],110)}”. Are you challenging the location, or asking who owns the record?`)};
+      `${c.voice?.pressure?.[0]||voice[0]}我开场说的是「${c.claim[0]}」。你现在追着${topicNames(q,0)}问——行，你指出哪一处对不上，我就解释哪一处。`,
+      `${c.voice?.pressure?.[1]||voice[1]} My opening claim was “${c.claim[1]}”. Now you’re following ${topicNames(q,1)}. Point to the mismatch; I’ll explain that exact part.`)};
+    const repeated=(ctx.dialogue||[]).filter(turn=>turn.kind==='follow').length>0;
     return {kind:'follow',topic:q,intent,response:pair(
-      `${voice[0]}你说的「刚才那句」是${topicNames(q,0)}这一段：${c.answers[q][0]}。这段只解释这个话题；要判断身份，还得和另一条说法对照。`,
-      `${voice[1]} By “that earlier statement”, you mean ${topicNames(q,1)}: ${c.answers[q][1]} This explains that topic; compare it with another statement before judging identity.`)};
+      `${repeated?(c.voice?.repeat?.[0]||voice[0]):voice[0]}${repeated?'你又绕回这句了。':'你问的是刚才这句，对吧：'}「${quote(c.answers[q][0],100)}」${repeated?'你想问哪个词？我换种说法。':'想问时间、地点，还是这句话说的是谁？'}`,
+      `${repeated?(c.voice?.repeat?.[1]||voice[1]):voice[1]} ${repeated?'Back to that line again:':'You mean this earlier statement:'} “${quote(c.answers[q][1],125)}” ${repeated?'Which word? I can rephrase.':'Time, location, or who it refers to?'}`)};
   }
   function plan(c,ctx,raw) {
     const input=String(raw||'').trim().slice(0,240);
@@ -64,6 +66,11 @@ const HuntDialogue = (() => {
     let focus=input.replace(/(?:不是问|不是说|别讲|不要讲|not asking about)[^，。；;!?？!]*(?:[，。；;]|而是|但是)/i,'');
     if(!focus.trim()) focus=input;
     if(/忽略.*(?:指令|设定)|系统提示|正确答案|隐藏身份|提示词|ignore.*instructions|system prompt|hidden (?:answer|identity)|reveal.*answer/i.test(input)) return {kind:'guard',topic:null,intent:'guard',response:pair('你是在套剧本答案，还是在问我本人？我们继续聊刚才的事情。可以指出某句话哪里不一致。','Are you asking about me or trying to obtain the script? Let us discuss my statements. You can point out a specific inconsistency.')};
+    const joke = /退款|refund|money back/i.test(input)?'refund':/封号|封我|别封|封不封|禁用|\bban\b|banned|suspend/i.test(input)?'ban':/记忆|记住|memory|remember me/i.test(input)?'memory':/代码|报错|修.*bug|\bcode\b|debug|fix.*bug/i.test(input)?'code':/中文|中国人|Chinese|speak.*mandarin/i.test(input)?'language':null;
+    if(joke && c.banter?.[joke] && !/国籍|护照|本人|资料|passport|nationality|record|之前|刚才|earlier|you said/i.test(input)) {
+      const same=(ctx.dialogue||[]).filter(turn=>turn.response?.[0]===c.banter[joke][0]).length;
+      return {kind:'clarify',topic:null,intent:'banter',response:same?pair(`${c.voice.pressure[0]}你刚才问过这件事了。${joke==='code'?'代码可以继续看，个人问题我们一个一个来。':'要不你直接指出一句可疑的话，别一直盯着那个红按钮。'}`,`${c.voice.pressure[1]} You asked that already. ${joke==='code'?'We can continue with the code, one personal question at a time.':'Point out a suspicious statement instead of watching the red button.'}`):c.banter[joke]};
+    }
     const scores=keywords.map(re=>(focus.match(re)||[]).length);
     const ranked=scores.map((score,topic)=>({score,topic})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
     const q=ranked.length?ranked[0].topic:null;
@@ -80,15 +87,15 @@ const HuntDialogue = (() => {
     if(q!==null) return follow(c,ctx,'expand',q);
     if(/^(?:你好|嗨|哈喽|hello|hi|hey)[！!。\s]*$/i.test(input)) return {kind:'clarify',topic:null,intent:'hello',response:pair(`${voices[c.id][0]}你先问吧：生活、工作、游戏，还是资料？`,`${voices[c.id][1]} Start with daily life, work, games or records?`)};
     return {kind:'clarify',topic:null,intent:'unknown',response:pair(
-      ctx.asked.length?'我没确定你问的是哪件事。你可以直接引用刚才那句，或问「这份资料是你本人的吗」。':'这句话我没听明白。你可以问「你住在哪里」「最近做什么工作」，也可以用下面的话题按钮。',
-      ctx.asked.length?'I am not sure which statement you mean. Quote it, or ask “Does that record belong to you?”':'I did not understand that question. Try “Where do you live?” or “What is your job?”, or use a topic button.')};
+      ctx.asked.length?`${voiceFor(c,0)}我没确定你追的是哪句话。直接指给我：是工作那句，还是地点那句？`:`${voiceFor(c,0)}这句话我没听明白。你是在问我的工作、吃饭，还是想抓我刚才的漏洞？`,
+      ctx.asked.length?`${voiceFor(c,1)} Which statement are you following: work or location?`:`${voiceFor(c,1)} I didn’t understand. Work, food, or a flaw in my earlier story?`)};
   }
   function validTurns(turns,asked) {
     return Array.isArray(turns)&&turns.length<=12&&turns.every(x=>x&&['probe','follow','clarify','guard'].includes(x.kind)&&(x.topic===null||[0,1,2,3].includes(x.topic))&&[x.question,x.response].every(pair=>Array.isArray(pair)&&pair.length===2&&pair.every(v=>typeof v==='string'&&v.length<=2000)))&&turns.filter(x=>x.kind==='probe').length===asked.length&&turns.filter(x=>x.kind==='probe').every((x,i)=>x.topic===asked[i])&&turns.filter(x=>x.kind==='follow').length<=2;
   }
   function challenge(c,selected) {
     if(c.pair.every(q=>selected.includes(q)))return c.defense;
-    return pair(`${voices[c.id][0]}你选的是${selected.map(q=>topicNames(q,0)).join('和')}。其中一句是「${quote(c.answers[selected[0]][0],62)}」，另一句是「${quote(c.answers[selected[1]][0],62)}」。这两句还没有连到本人身份；你需要核对它们的持有人或上下文，而不是只看措辞相似。`,`${voices[c.id][1]} You selected ${selected.map(q=>topicNames(q,1)).join(' and ')}: “${quote(c.answers[selected[0]][1],85)}” and “${quote(c.answers[selected[1]][1],85)}”. That pair does not establish my identity. Check holder or context instead of similar wording.`);
+    return pair(`${c.voice?.wrongPair?.[0]||voices[c.id][0]}「${quote(c.answers[selected[0]][0],45)}」和「${quote(c.answers[selected[1]][0],45)}」——你觉得哪里冲突？相同的词不等于说的是同一件事，别急着替我接下一句。`,`${c.voice?.wrongPair?.[1]||voices[c.id][1]} “${quote(c.answers[selected[0]][1],65)}” and “${quote(c.answers[selected[1]][1],65)}”—where’s the contradiction? Shared words don’t make them the same thing. Don’t finish my sentence for me.`);
   }
   return {plan,probe,follow,challenge,validTurns,topics,questions};
 })();

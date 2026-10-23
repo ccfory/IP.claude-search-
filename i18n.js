@@ -3,7 +3,7 @@ const I18n=(()=>{
  let lang='zh';try{lang=localStorage.getItem('ipcheck-language')==='en'?'en':'zh'}catch{}
  const pairs=[],attributes=[];
  const dictionary={
- '东八区检查站 · 夜班档案':'UTC+8 CHECKPOINT · NIGHT ARCHIVES','♫ 声音':'♫ Sound','值班手册':'Handbook','新手指引':'Beginner guide','切换玩法':'Switch modes','Ⅱ 暂停':'Ⅱ Pause',
+ 'IP 判断':'IP Check','东八区检查站 · 夜班档案':'UTC+8 CHECKPOINT · NIGHT ARCHIVES','♫ 声音':'♫ Sound','值班手册':'Handbook','新手指引':'Beginner guide','切换玩法':'Switch modes','Ⅱ 暂停':'Ⅱ Pause',
  'RAINY NIGHT / 雨夜档案':'RAINY NIGHT / ARCHIVES','雨落有声，':'Hear the rain.','判断有据。':'Keep the evidence.','以 Claude 之名，温柔倾听，审慎判断。':'As Claude, listen with care. Review with evidence.',
  '零点回声':'MIDNIGHT ECHO','48 份档案 · 18 次相遇':'48 FILES · 18 ENCOUNTERS','你的身份 / 值班审查员':'YOUR ROLE / REVIEW OFFICER',
  '档案进度':'Files reviewed','审查得分':'Review score','证据连对':'Evidence streak','剩余容错':'Mistakes left',
@@ -21,7 +21,7 @@ const I18n=(()=>{
  };
  function text(zh,en){return lang==='en'?en:zh}
  function capture(){if(!document.createTreeWalker)return;const walker=document.createTreeWalker(document.body,4);let n;while(n=walker.nextNode()){if(n.parentElement.closest('script,style'))continue;const raw=n.textContent,key=raw.trim();if(dictionary[key])pairs.push({node:n,zh:raw,en:raw.replace(key,dictionary[key])})}const attrMap={'东八区检查站':'UTC+8 Checkpoint','音量与音效设置':'Volume and sound settings','当前剧情':'Current story','Claude 的工作台':'Claude’s desk','Claude 的值班形象':'Claude’s character portrait','Claude 头像':'Claude avatar','调查访客':'Investigate visitor','审核决定':'Review decision','显示完整对话':'Show the full dialogue','工位快捷导航':'Desk navigation','橙色长发、戴眼镜、身着黑金与蕾丝白长裙的 Claude，在落雪中值守':'Claude: orange hair, glasses and a black, gold and white dress; original character illustration'};document.querySelectorAll('[aria-label],[title],[alt]').forEach(node=>{for(const key of ['aria-label','title','alt']){const zh=node.getAttribute(key);if(attrMap[zh])attributes.push({node,key,zh,en:attrMap[zh]})}});apply();}
- function apply(){document.documentElement.lang=lang==='en'?'en':'zh-CN';document.title=lang==='en'?'IP CHECK · Rain Archives':'IP CHECK · 雨夜档案';pairs.forEach(p=>p.node.textContent=p[lang]);attributes.forEach(p=>p.node.setAttribute(p.key,p[lang]));const b=document.getElementById('language-toggle');if(b){b.textContent='中 / EN';b.setAttribute('aria-label',lang==='en'?'Switch to Chinese':'切换为 English');b.setAttribute('title',lang==='en'?'Switch to Chinese':'Switch to English')}}
+ function apply(){document.documentElement.lang=lang==='en'?'en':'zh-CN';document.title=lang==='en'?'IP Check':'IP 判断';pairs.forEach(p=>p.node.textContent=p[lang]);attributes.forEach(p=>p.node.setAttribute(p.key,p[lang]));const b=document.getElementById('language-toggle');if(b){b.textContent='中 / EN';b.setAttribute('aria-label',lang==='en'?'Switch to Chinese':'切换为 English');b.setAttribute('title',lang==='en'?'Switch to Chinese':'Switch to English')}}
  function toggle(){lang=lang==='zh'?'en':'zh';try{localStorage.setItem('ipcheck-language',lang)}catch{}apply()}
  return {text,capture,apply,toggle,get lang(){return lang}};
 })();

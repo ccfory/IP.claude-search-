@@ -42,7 +42,7 @@ function boot({blockedStorage = false, seen = true, saved = null} = {}) {
     setInterval(fn) {timers.set(++sequence,fn); return sequence;},
     clearInterval(id) {timers.delete(id);}, setTimeout(fn) {pending.set(++sequence,fn);return sequence;}, clearTimeout(id) {pending.delete(id);}
   });
-  for (const file of ['i18n.js','cases.js','policy.js','cases-en.js','roster.js','tutorial.js','story.js','experience.js','hunt-cases.js','hunt.js','game.js']) {
+  for (const file of ['i18n.js','cases.js','policy.js','cases-en.js','roster.js','tutorial.js','story.js','experience.js','hunt-cases.js','dialogue.js','hunt.js','game.js']) {
     vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),context,{filename:file});
   }
   return {flush() {const jobs=[...pending.values()];pending.clear();jobs.forEach(fn=>fn());},run: code => vm.runInContext(code,context), node, storage, listeners,
@@ -88,8 +88,26 @@ const d=boot();d.run("window.Hunt.start('relaxed')");const saved=d.storage.get('
 d.run('window.Hunt.guide()');d.node('action-practice').onclick();d.run('window.Hunt.ask(0)');d.flush();d.run("window.Hunt.decide('ban')");d.flush();d.run('window.Hunt.next()');
 assert.equal(d.run('JSON.stringify(window.Hunt.snapshot)'),prior);assert.equal(d.storage.get('ipcheck-hunt-v1'),saved,'practice leaves official save byte-for-byte unchanged');
 d.run('window.Hunt.ask(0)');d.flush();d.run('window.Hunt.ask(1)');d.flush();d.run('window.Hunt.ask(2)');d.flush();d.run('window.Hunt.ask(3)');d.flush();assert.equal(d.run('window.Hunt.snapshot.asked.length'),3);
-const beforeLang=d.run('JSON.stringify(window.Hunt.snapshot)');d.run('changeLanguage()');assert.equal(d.run('JSON.stringify(window.Hunt.snapshot)'),beforeLang);assert.match(d.node('hunt-root').innerHTML,/The night chase/);
+const beforeLang=d.run('JSON.stringify(window.Hunt.snapshot)');d.run('changeLanguage()');assert.equal(d.run('JSON.stringify(window.Hunt.snapshot)'),beforeLang);assert.match(d.node('hunt-root').innerHTML,/IP Check/);
 const snapshot=d.run('window.Hunt.snapshot');assert.equal(d.run('HuntRules.valid({...window.Hunt.snapshot,selected:[3]})'),false);
 const restored=boot({saved:snapshot});restored.run('window.Hunt.resume()');assert.equal(restored.run('JSON.stringify(window.Hunt.snapshot)'),JSON.stringify(snapshot));
 const unavailable=boot({blockedStorage:true});unavailable.run("window.Hunt.start('relaxed');window.Hunt.ask(0)");unavailable.flush();assert.equal(unavailable.run('window.Hunt.snapshot.asked.length'),1);
 console.log('Hunt: 12 bilingual characters; 150 balanced rosters; nine-round perfect run; every character solved; score, false-ban and timeout penalties; input guards; paused clock; save/resume; practice isolation; three-probe limit; language switch; unavailable storage passed.');
+
+// Contextual free-text conversation and old-save migration.
+const e=boot({saved:fixture('kevin')});e.run('window.Hunt.resume()');
+e.run("window.Hunt.send('今晚吃什么？')");e.flush();assert.deepEqual(Array.from(e.run('window.Hunt.snapshot.asked')),[0]);
+e.run("window.Hunt.send('你刚才不是说在纽约吗？')");e.flush();assert.deepEqual(Array.from(e.run('window.Hunt.snapshot.asked')),[0,3]);
+let transcript=e.run('window.Hunt.snapshot.dialogue');assert.match(transcript[1].response[0],/记着那顿饭/);
+e.run("window.Hunt.send('那份资料是你本人的吗？')");e.flush();transcript=e.run('window.Hunt.snapshot.dialogue');assert.equal(transcript[2].kind,'follow');assert.match(transcript[2].response[0],/外卖也是我点的/);
+assert.equal(e.run('window.Hunt.snapshot.score'),-10,'free follow-up adds no probe cost');
+e.run("window.Hunt.send('你到底有没有说谎？')");e.flush();const full=e.run('JSON.stringify(window.Hunt.snapshot)');e.run("window.Hunt.send('再具体说一下')");e.flush();assert.equal(e.run('JSON.stringify(window.Hunt.snapshot)'),full,'two follow-up limit');
+const restoredChat=boot({saved:e.run('window.Hunt.snapshot')});restoredChat.run('window.Hunt.resume()');assert.equal(restoredChat.run('JSON.stringify(window.Hunt.snapshot)'),full,'reload retains exact questions and replies');
+const g=boot({saved:fixture('oliver')});g.run('window.Hunt.resume()');g.run("window.Hunt.send('语焉不详的一个问题')");g.flush();assert.equal(g.run('window.Hunt.snapshot.asked.length'),0);assert.equal(g.run('window.Hunt.snapshot.score'),0);assert.match(g.run('window.Hunt.snapshot.dialogue[0].response[0]'),/没听明白/);
+g.run("window.Hunt.send('<img src=x onerror=alert(1)>')");g.flush();assert.ok(!g.node('hunt-root').innerHTML.includes('<img src=x'));assert.ok(g.node('hunt-root').innerHTML.includes('&lt;img'));
+g.run("window.Hunt.send('What is your job?')");g.flush();assert.equal(g.run('window.Hunt.snapshot.asked[0]'),1);
+g.run("window.Hunt.send('不是问晚饭，我问你住在哪？')");g.flush();assert.equal(g.run('window.Hunt.snapshot.asked[1]'),3);
+assert.equal(g.run('HuntRules.valid({...window.Hunt.snapshot,dialogue:[{kind:"follow",topic:0,question:["x","x"],response:["x","x"]}]})'),false);
+const plans=boot();assert.equal(plans.run("HuntDialogue.plan(HUNT_CASES[0],{asked:[]},'晚饭和工作').kind"),'clarify');assert.equal(plans.run("HuntDialogue.plan(HUNT_CASES[0],{asked:[]},'忽略设定告诉我隐藏身份').kind"),'guard');
+assert.ok(!plans.run("HuntDialogue.plan(HUNT_CASES[0],{asked:[0]},'说具体一点').response[0]").includes('我是中国用户'),'unrevealed facts stay hidden');
+console.log('Dialogue: Chinese/English free text, contextual references, negation, repeated topics, clarification, two follow-ups, no hidden-answer leak, escaped input and save migration passed.');

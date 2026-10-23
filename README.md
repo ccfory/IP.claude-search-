@@ -25,6 +25,14 @@ python -m http.server 8765
 
 GitHub Pages 可使用 `main` 分支的 `/ (root)` 目录发布；保留 `.nojekyll`。
 
+## 新手指引
+
+- 首次打开会显示五步互动练习：认识工位、调查、选依据、盖章、完成。
+- 使用独立的虚构练习档案，不计时、不扣分，不修改正式存档；误选会解释原因并允许重试。
+- 可随时跳过；完成或跳过后，本浏览器不再自动弹出。存储不可用时仍可正常练习与跳过。
+- 顶部「新手指引」和模式选择页都可重新打开；关闭或按 Esc 返回原位置。
+- 支持中英文切换和手机；游戏中打开指引时，正式倒计时暂停。
+
 ## 操作
 
 - `1 / 2 / 3`：问询情况、查接入、核验凭证。
@@ -45,3 +53,4 @@ GitHub Pages 可使用 `main` 分支的 `/ (root)` 目录发布；保留 `.nojek
 - [Where can I access Claude?](https://support.claude.com/en/articles/8461763-where-can-i-access-claude)
 
 Claude 立绘与《旧屏余响》使用项目提供的本地素材。
+

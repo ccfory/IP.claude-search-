@@ -3,7 +3,7 @@ const I18n=(()=>{
  let lang='zh';try{lang=localStorage.getItem('ipcheck-language')==='en'?'en':'zh'}catch{}
  const pairs=[],attributes=[];
  const dictionary={
- '东八区检查站 · 夜班档案':'UTC+8 CHECKPOINT · NIGHT ARCHIVES','♫ 声音':'♫ Sound','值班手册':'Handbook','Ⅱ 暂停':'Ⅱ Pause',
+ '东八区检查站 · 夜班档案':'UTC+8 CHECKPOINT · NIGHT ARCHIVES','♫ 声音':'♫ Sound','值班手册':'Handbook','新手指引':'Beginner guide','Ⅱ 暂停':'Ⅱ Pause',
  'RAINY NIGHT / 雨夜档案':'RAINY NIGHT / ARCHIVES','雨落有声，':'Hear the rain.','判断有据。':'Keep the evidence.','以 Claude 之名，温柔倾听，审慎判断。':'As Claude, listen with care. Review with evidence.',
  '零点回声':'MIDNIGHT ECHO','48 份档案 · 18 次相遇':'48 FILES · 18 ENCOUNTERS','你的身份 / 值班审查员':'YOUR ROLE / REVIEW OFFICER',
  '档案进度':'Files reviewed','审查得分':'Review score','证据连对':'Evidence streak','剩余容错':'Mistakes left',
@@ -27,3 +27,4 @@ const I18n=(()=>{
 })();
 const t=(zh,en)=>I18n.text(zh,en);
 I18n.capture();
+

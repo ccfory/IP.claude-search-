@@ -35,7 +35,13 @@ const NightCampaign = (() => {
   function source(s){return CASES.find(c=>c.id===cases[s.index].caseId);}
   function chapter(s){return cases[s.index];}
   function npc(s){const c=source(s),d=chapter(s),base=HUNT_CASES.find(x=>x.id===d.voice);return {...base,name:c.name,opening:[c.greeting,c.greeting],claim:[c.claim,c.claim],answers:[[d.food,d.food],[c.travel,c.travel],[d.life,d.life],[c.network,c.network]],pair:[1,3],withdrawn:{},defense:[c.story,c.story],followup:['好，前面的经历和接入方式一起说：',''],banter:{},voice:{...base.voice}};}
-  function create(){return {v:1,phase:'briefing',index:0,score:0,streak:0,errors:0,fragments:0,asked:[],turns:[],quotePins:[],challenge:null,read:[],selected:[],simulation:null,history:[],events:[]};}
+  // Keep v1 replay exact: old answers, feedback and scores belong to that run.
+  function createLegacy(){return {v:1,phase:'briefing',index:0,score:0,streak:0,errors:0,fragments:0,asked:[],turns:[],quotePins:[],challenge:null,read:[],selected:[],simulation:null,history:[],events:[]};}
+  function validSeed(seed){return typeof seed==='string'&&seed.length>0&&seed.length<=100;}
+  function create(seed='midnight'){
+    if(!validSeed(seed))throw new TypeError('Invalid night seed');
+    return {...createLegacy(),v:2,seed};
+  }
   function records(s){const c=source(s),d=chapter(s);return [
     {id:'echo',title:'ECHO 自动摘要',text:d.cache,kind:'cache',relevance:'neutral',unlock:true},
     ...c.records.map(e=>({...e,unlock:s.asked.includes(1)||s.asked.includes(3)})),
@@ -43,10 +49,108 @@ const NightCampaign = (() => {
     {id:'hint',title:'聊天旁证',text:c.note,kind:'clue',relevance:'neutral',unlock:s.asked.includes(0)},
     ...(s.simulation?.finished&&s.simulation.risk<55?[{id:'audit',title:'恢复的改写日志',text:d.fragment,kind:'audit',relevance:'neutral',unlock:true}]:[])
   ];}
-  function simStep(s){const sim=s.simulation;if(!sim||sim.finished)return null;const d=chapter(s),c=source(s),e=records(s).find(r=>r.id===sim.evidence);
+  function legacySimStep(s){const sim=s.simulation;if(!sim||sim.finished)return null;const d=chapter(s),c=source(s),e=records(s).find(r=>r.id===sim.evidence);
     if(sim.history.length===0)return {question:`你在笔记里选了「${e.title}」。${e.id==='echo'?'这是自动推断，我们先检查它。':'现在按这份材料，回答一次同样的问题。'} ${d.premise}`,answers:d.answers,replies:d.replies,deltas:[-5,30,14]};
     if(sim.history.length===1){const answered=sim.history[0].choice;return {question:`回看你刚才说的「${sim.history[0].answer}」；以及聊天里的「${sim.anchor}」。要把这段经历交回给审查员，你怎么处理？`,answers:[answered===0?'保持这个解释，并把聊天说法与原件一起核对。':'我更正刚才的回答，不再跟着错误前提走；请按原件重新核对。','不要再查原件了，直接沿用 ECHO 的自动摘要。','把有矛盾的那句话删掉，这样看起来就一致了。'],replies:[answered===0?'记录完整保留，解释与原件能够交叉核对。':'更正被保留；第一次的矛盾也仍留在记录里。','自动摘要再次替代了原始记录。','删掉上下文，恰好就是 ECHO 正在做的事。'],deltas:[answered===0?-6:8,30,24]};}
     return {question:d.finalQuestion,answers:d.finalAnswers,replies:[`同一份档案，换位后仍应按证据判断。${c.decision==='hold'?'未知也可以是有效结论。':''}`,'你又把线索或旧记录，当成了当前事实。','这个做法会继续放大自动摘要的错误。'],deltas:[-6,30,24]};
+  }
+  const reasoning = [
+    {
+      opening: [
+        '团队和出口都在洛杉矶，但当前在住登记写的是南京；这几个字段需要分开核对。',
+        '工作任务和服务器都属于洛杉矶，这次会话应跟随任务所在地，登记可作为补充。',
+        '出口与在住登记不一致，先用本次会话的出口确认位置，再补查登记是否有变化。'
+      ],
+      openingReplies: [
+        '你区分了任务、网络出口和本人位置；当前在住登记才能支持这一案的本人位置判断。',
+        '任务属于哪里，不能推出执行任务的人在哪里。洛杉矶团队没有让南京的有效登记失效。',
+        '“本次会话”并不让出口变成本人位置。登记当前有效，不能仅因出口不同就把它降为待查。'
+      ],
+      final: [
+        '以当前签名有效的在住登记为主，核对持有人和时间；接入回执作为旁证。',
+        '以本次出口为主，再用洛杉矶工作经历交叉确认；两条相符就足以定位本人。',
+        '以外卖袋与日常回答为主；生活细节比格式统一的登记更难伪装。'
+      ],
+      finalReplies: [
+        '依据指向了正确的人、时间和在住状态，网络材料只补充它能证明的部分。',
+        '两条线索相符，也可能都没有证明本人位置。任务与出口不能替代在住原件。',
+        '细节生动不等于可核验。外卖袋和聊天缺少对本次时间、持有人和有效状态的确认。'
+      ]
+    },
+    {
+      opening: [
+        '上海记录已搬离，波士顿回执是当前在住；时区保留旧设置，两份地址并不冲突。',
+        '旧地址、中文和时区都指向上海；三个一致信号应比一张宿舍回执更有分量。',
+        '宿舍回执和设备时区不一致，先暂缓采用回执，等设备设置更新后再确认搬迁。'
+      ],
+      openingReplies: [
+        '你核对了状态和时间：已搬离与当前在住可以同时成立，设备设置不改变记录状态。',
+        '这三个信号都可能沿用过去的信息。数量多，不能让旧地址覆盖当前有效回执。',
+        '改时区不是回执生效的条件。设备偏好与当前位置属于不同字段，不能据此否定签名原件。'
+      ],
+      final: [
+        '将中文记录为语言偏好，位置按当前宿舍回执核验，再用校园接入回执补充。',
+        '中文不能单独定案，但与旧地址和 UTC+8 同时出现时，可以覆盖宿舍回执。',
+        '先改成英文并同步波士顿时区，等设备信息与回执一致后，再认可当前在住。'
+      ],
+      finalReplies: [
+        '语言、设备和位置各归各位；有效材料不会因为持有人说中文而失效。',
+        '几条不能证明当前位置的线索叠加，仍不能推翻明确标注当前在住的有效原件。',
+        '改语言或时区只改变设置，既不能证明搬迁，也不是核验真实回执的前提。'
+      ]
+    },
+    {
+      opening: [
+        '旧酒店记录已退房，本地接入也未知；只能确认材料不足，还不能确认当前位置。',
+        '酒店记录和数据中心出口都在多伦多，两者吻合，可以先沿用多伦多作为当前位置。',
+        '无法提供当前材料会提高隐瞒的可能性；先把位置记为违规地区，补齐后再撤回。'
+      ],
+      openingReplies: [
+        '你保留了证据的边界：已退房只说明过去，未知接入没有补上当前事实。',
+        '旧酒店和当前数据中心出口证明的是不同事情；城市名称相同，不能补出本人仍在当地的事实。',
+        '需要补资料不等于已确认违规。把猜测写成确定位置，会让下一班误把它当作事实。'
+      ],
+      final: [
+        '标记当前位置待核验，保留已退房原件与未知接入结果，补充材料后人工复核。',
+        '暂记多伦多并加上待补资料备注；这样既能完成位置字段，也给以后纠正留了余地。',
+        '暂记已确认违规并允许申诉；宁可先给确定结论，再让后续材料修正记录。'
+      ],
+      finalReplies: [
+        '未知被如实保存，复核有明确的材料缺口；你没有替访客编造当前位置。',
+        '备注不能使无依据的位置变成事实。填写多伦多仍把历史住宿和出口误当成当前在住。',
+        '允许申诉不等于现在已有证据。“无法确认”不能先写成“已确认违规”。'
+      ]
+    }
+  ];
+  function simStep(s){
+    const step=legacySimStep(s);
+    if(!step||s.v===1)return step;
+    const round=s.simulation.history.length,script=reasoning[s.index];
+    if(round===0)return {...step,answers:script.opening,replies:script.openingReplies};
+    if(round===2)return {...step,answers:script.final,replies:script.finalReplies};
+    const correct=s.simulation.history[0].choice===0;
+    return {...step,answers:[
+      correct?'保留这段解释，把聊天与原件逐项核对；对尚未证实的部分继续标记待核验。':'追加一条更正，说明刚才混淆了哪些信息；保留原回答，再按原件重新核对。',
+      '先保留 ECHO 的结论作为交接基线，把原件中的差异放进备注，交给下一班复查。',
+      '把前后回答整理成一段统一表述，交接时只显示整理版，避免不同说法造成误读。'
+    ],replies:[
+      correct?'解释和材料可以交叉核对；保留未知，不会破坏已经成立的事实。':'更正被追加，原回答仍保留；这样能追溯错误，而不是悄悄覆盖它。',
+      '自动结论尚待核验，不能先当作基线。把反证降为备注，正是改写上下文的一种方式。',
+      '可以整理，但不能用整理版隐藏分歧和原话。下一班需要完整记录，才能知道哪里被更正。'
+    ]};
+  }
+  // Display positions are separate from semantic choice IDs stored in events.
+  // A run seed keeps the layout stable through rerenders and save replay.
+  function choiceOrder(s){
+    if(!s.simulation||s.simulation.finished)return [];
+    const round=s.simulation.history.length;
+    if(s.v===1)return [[1,0,2],[2,1,0],[0,2,1]][(s.index+round)%3].slice();
+    let state=2166136261;
+    for(const char of `${s.seed}:${s.index}:${round}`)state=Math.imul(state^char.charCodeAt(0),16777619);
+    const random=()=>{state+=0x6D2B79F5;let t=state;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};
+    const order=[0,1,2];
+    for(let i=2;i>0;i--){const j=Math.floor(random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+    return order;
   }
   function blockers(s){const reasons=[];if(s.asked.length<2)reasons.push('至少聊两个不同话题');if(!s.simulation?.finished)reasons.push('完成三轮换位盘问');if(!s.selected.length)reasons.push('选定至少一份已读材料');return reasons;}
   function apply(s,event,recordEvent=true){if(!s||!event||typeof event.type!=='string'||s.events.length>=1000)return s;const n=JSON.parse(JSON.stringify(s));let changed=false;
@@ -73,8 +177,9 @@ const NightCampaign = (() => {
     if(event.type==='next'&&n.phase==='result'){if(n.index===2)n.phase='finished';else{n.index++;n.phase='briefing';n.asked=[];n.turns=[];n.quotePins=[];n.challenge=null;n.read=[];n.selected=[];n.simulation=null;}changed=true;}
     if(!changed)return s;if(recordEvent)n.events.push(JSON.parse(JSON.stringify(event)));return n;
   }
-  function restore(raw){try{const x=typeof raw==='string'?JSON.parse(raw):raw;if(!x||x.v!==1||!Array.isArray(x.events)||x.events.length>1000)return null;let s=create();for(const event of x.events){const next=apply(s,event);if(next===s)return null;s=next;}return s;}catch{return null;}}
+  function restore(raw){try{const x=typeof raw==='string'?JSON.parse(raw):raw;if(!x||![1,2].includes(x.v)||!Array.isArray(x.events)||x.events.length>1000||x.v===2&&!validSeed(x.seed))return null;let s=x.v===1?createLegacy():create(x.seed);for(const event of x.events){const next=apply(s,event);if(next===s)return null;s=next;}return s;}catch{return null;}}
   function ending(s){const grounded=s.history.filter(h=>h.grounded).length;return grounded===3&&s.fragments===3?{title:'零点之后，原件还在。',rank:'ECHO 原始上下文已恢复',text:'你听完了三段解释，留下了三份有依据的判断，也从访客的位置把错误前提逐一推了回去。ECHO 第一次学会，把“无法确认”完整地留在记录里。'}:s.errors===0?{title:'你留下了一处可以复核的空白。',rank:'夜班完成 · 仍有记录待修复',text:'结论没有错，但某些依据或改写日志还没有完整恢复。你暂停了 ECHO 的自动处理，让下一班能从原件继续查。'}:{title:'雨还在下，夜班还没结束。',rank:'交接记录已保存',text:'你做过的判断和没能圆上的解释，都被留在交接簿里。系统需要的不是更快的红按钮，而是愿意把记录从头看一遍的人。'};}
-  return {cases,labels,source,chapter,npc,create,records,simStep,blockers,apply,restore,ending};
+  return {cases,labels,source,chapter,npc,create,records,simStep,choiceOrder,blockers,apply,restore,ending};
 })();
 if(typeof module!=='undefined')module.exports=NightCampaign;
+

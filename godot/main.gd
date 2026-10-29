@@ -145,7 +145,7 @@ func render() -> void:
 	else:
 		line(str(p.prefix), 23, MUTED)
 	var stage: Dictionary = data.nodes[node_key]
-	line("✳ Claude\n" + str(stage.question), 32)
+	line("Claude\n" + str(stage.question), 32)
 	for i in stage.choices.size():
 		var choice: Dictionary = stage.choices[i]
 		button("0%d   %s" % [i + 1, choice.text], choose.bind(i))
